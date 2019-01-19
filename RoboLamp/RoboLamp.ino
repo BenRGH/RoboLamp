@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include <EEPROM.h>
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
@@ -10,13 +11,18 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // potentiometers
 uint16_t potPin = A0;
 uint16_t potVal = 500; // ranges from ~3 - 1023
-uint16_t lightPotPin = A1;
-uint16_t lightPotVal = 500; 
+//uint16_t lightPotPin = A1;
+//uint16_t lightPotVal = 500; 
 
 uint16_t currPulseLen[4] = {150,150,150,150}; // current positions for servos
 
-uint16_t modeBtnPin = 2;
-int modeBtnState = 0;
+uint8_t modeBtnPin = 2;
+uint8_t modeBtnState = 0;
+uint8_t saveBtnPin = 3;
+uint8_t saveBtnState = 0;
+uint8_t loadBtnPin = 4;
+uint8_t loadBtnState = 0;
+
 uint16_t currServo = 0;
 
 uint8_t rotationSpeed = 5;
@@ -31,6 +37,8 @@ void setup() {
   delay(10);
 
   pinMode(modeBtnPin, INPUT); // high is pressed, low is normal
+  pinMode(saveBtnPin, INPUT);
+  pinMode(loadBtnPin, INPUT);
 
 }
 
@@ -50,6 +58,44 @@ void loop() {
       Serial.println("next servo");
     }
   }
+
+  // save current position
+  saveBtnState = digitalRead(saveBtnPin);
+  delay(10);
+  if(saveBtnState == HIGH){
+    Serial.println("saving...");
+    /***
+      Need to divide by 4 because servo range is 150-550 
+      and each byte of the EEPROM can only hold a value from 0 to 255.
+    ***/
+    uint8_t saveVal = currPulseLen[0] / 4;
+    uint8_t saveVal1 = currPulseLen[1] / 4;
+    uint8_t saveVal2 = currPulseLen[2] / 4;
+    uint8_t saveVal3 = currPulseLen[3] / 4;
+
+    Serial.println(saveVal);
+    Serial.println(saveVal1);
+    Serial.println(saveVal2);
+    Serial.println(saveVal3);
+
+    // save to permanent mem
+    EEPROM.write(0, saveVal);
+    EEPROM.write(1, saveVal1);
+    EEPROM.write(2, saveVal2);
+    EEPROM.write(3, saveVal3);
+  }
+
+  // load saved position
+  loadBtnState = digitalRead(loadBtnPin); // read button press
+  delay(10); // apparently this helps reading
+  if(loadBtnState == HIGH){
+    Serial.println("loading...");
+    // read from permanent mem
+    moveServo(0,int(EEPROM.read(0))*4);
+    moveServo(1,int(EEPROM.read(1))*4);
+    moveServo(2,int(EEPROM.read(2))*4);
+    moveServo(3,int(EEPROM.read(3))*4);
+  }
   
   delay(100);
 
@@ -63,12 +109,12 @@ void loop() {
     // go -10
     if ((currPulseLen[currServo] - rotationSpeed) <= SERVOMIN){
       moveServo(currServo, SERVOMIN); // set to lowest angle
-      delay(100);
+      delay(10);
       Serial.println("at lowest");
     }else if((currPulseLen[currServo] - rotationSpeed) > SERVOMIN){
       // moves current servo to its previous position - 10
       moveServo(currServo, currPulseLen[currServo] - rotationSpeed); 
-      delay(100);
+      delay(10);
       Serial.println("-10");
     }
     
@@ -76,13 +122,13 @@ void loop() {
     // go +10
     if ((currPulseLen[currServo] + rotationSpeed) >= SERVOMAX){
       moveServo(currServo, SERVOMAX); // set to highest angle
-      delay(100);
+      delay(10);
       Serial.println("at highest");
       
     }else if((currPulseLen[currServo] + rotationSpeed) < SERVOMAX){
       // moves current servo to its previous position + 10
       moveServo(currServo, currPulseLen[currServo] + rotationSpeed);
-      delay(100);
+      delay(10);
       Serial.println("+10");
     }
     
@@ -92,7 +138,7 @@ void loop() {
   }
 
   // get & set light val
-//  lightPotVal = fromAnalogue(analogRead(lightPotPin)); // this should be degrees 0-180
+//  lightPotVal = fromPot(analogRead(lightPotPin)); // this should be degrees 0-180
 //  delay(10); // apparently this helps reading
 //  Serial.println("light intensity degree: "); 
 //  Serial.println(lightPotVal);

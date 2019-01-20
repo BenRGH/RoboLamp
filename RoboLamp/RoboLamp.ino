@@ -24,6 +24,7 @@ uint8_t loadBtnPin = 4;
 uint8_t loadBtnState = 0;
 
 uint16_t currServo = 0;
+uint8_t modeLedPin[4] = {10,9,8,7};
 
 uint8_t rotationSpeed = 5;
 
@@ -39,6 +40,10 @@ void setup() {
   pinMode(modeBtnPin, INPUT); // high is pressed, low is normal
   pinMode(saveBtnPin, INPUT);
   pinMode(loadBtnPin, INPUT);
+  pinMode(modeLedPin[0], OUTPUT);
+  pinMode(modeLedPin[1], OUTPUT);
+  pinMode(modeLedPin[2], OUTPUT);
+  pinMode(modeLedPin[3], OUTPUT);
 
 }
 
@@ -49,11 +54,15 @@ void loop() {
   delay(10); // apparently this helps reading
   if(modeBtnState == HIGH){
     if (currServo == 3){
+      digitalWrite(modeLedPin[currServo], LOW); // turn curr led off
       currServo = 0;
+      digitalWrite(modeLedPin[currServo], HIGH); // turn new led on
       delay(1000); // time to remove finger
       Serial.println("back to 0");
     }else{
+      digitalWrite(modeLedPin[currServo], LOW); 
       currServo++;
+      digitalWrite(modeLedPin[currServo], HIGH); 
       delay(1000); // time to remove finger
       Serial.println("next servo");
     }

@@ -14,7 +14,7 @@ uint16_t potVal = 500; // ranges from ~3 - 1023
 //uint16_t lightPotPin = A1;
 //uint16_t lightPotVal = 500; 
 
-uint16_t currPulseLen[4] = {150,150,150,150}; // current positions for servos
+uint16_t currPulseLen[4] = {150,150,150}; // current positions for servos
 
 uint8_t modeBtnPin = 2;
 uint8_t modeBtnState = 0;
@@ -24,7 +24,7 @@ uint8_t loadBtnPin = 4;
 uint8_t loadBtnState = 0;
 
 uint16_t currServo = 0;
-uint8_t modeLedPin[4] = {10,9,8,7};
+uint8_t modeLedPin[4] = {10,9,8};
 
 uint8_t rotationSpeed = 5;
 
@@ -43,8 +43,7 @@ void setup() {
   pinMode(modeLedPin[0], OUTPUT);
   pinMode(modeLedPin[1], OUTPUT);
   pinMode(modeLedPin[2], OUTPUT);
-  pinMode(modeLedPin[3], OUTPUT);
-
+  digitalWrite(10, HIGH); // turn led on 
 }
 
 
@@ -53,7 +52,7 @@ void loop() {
   modeBtnState = digitalRead(modeBtnPin); // read button press
   delay(10); // apparently this helps reading
   if(modeBtnState == HIGH){
-    if (currServo == 3){
+    if (currServo == 2){
       digitalWrite(modeLedPin[currServo], LOW); // turn curr led off
       currServo = 0;
       digitalWrite(modeLedPin[currServo], HIGH); // turn new led on
@@ -80,18 +79,15 @@ void loop() {
     uint8_t saveVal = currPulseLen[0] / 4;
     uint8_t saveVal1 = currPulseLen[1] / 4;
     uint8_t saveVal2 = currPulseLen[2] / 4;
-    uint8_t saveVal3 = currPulseLen[3] / 4;
 
     Serial.println(saveVal);
     Serial.println(saveVal1);
     Serial.println(saveVal2);
-    Serial.println(saveVal3);
 
     // save to permanent mem
     EEPROM.write(0, saveVal);
     EEPROM.write(1, saveVal1);
     EEPROM.write(2, saveVal2);
-    EEPROM.write(3, saveVal3);
   }
 
   // load saved position
@@ -103,7 +99,6 @@ void loop() {
     moveServo(0,int(EEPROM.read(0))*4);
     moveServo(1,int(EEPROM.read(1))*4);
     moveServo(2,int(EEPROM.read(2))*4);
-    moveServo(3,int(EEPROM.read(3))*4);
   }
   
   delay(100);

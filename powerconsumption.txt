@@ -1,0 +1,11 @@
+available
+total current from 5v: 	<500mA
+io pins current: 		<40 mA
+total io pins current: 	<200mA
+
+used
+pot & buttons 			<  1mA
+green led				  20mA	3.6v
+servo controller		~ 40mA	5.0v
+12 multiplexed LEDs		  60mA	5.0v
+total					~120mA

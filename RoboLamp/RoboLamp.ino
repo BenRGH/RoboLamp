@@ -8,25 +8,29 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVOMAX  550 // this is the 'maximum' pulse length count (out of 4096)
 // servomin is 0 degrees, servomax is ~190
 
-// potentiometers
+// Pins
 uint16_t potPin = A0;
-uint16_t potVal = 500; // ranges from ~3 - 1023
-//uint16_t lightPotPin = A1;
-//uint16_t lightPotVal = 500; 
-
-uint16_t currPulseLen[4] = {150,150,150}; // current positions for servos
-
 uint8_t modeBtnPin = 2;
-uint8_t modeBtnState = 0;
 uint8_t saveBtnPin = 3;
-uint8_t saveBtnState = 0;
 uint8_t loadBtnPin = 4;
+uint8_t modeLedPin[3] = {10,9,8};
+uint8_t lightClockPin = A3;
+uint8_t lightLatchPin = A1;
+uint8_t lightDataPin = A2;
+uint8_t lightBtnPin = 5;
+
+// Vars
+uint16_t potVal = 500; // ranges from ~3 - 1023
+uint8_t modeBtnState = 0;
+uint8_t saveBtnState = 0;
 uint8_t loadBtnState = 0;
-
+uint8_t lightBtnState = 0;
+bool lightOn = false;
+uint16_t currPulseLen[3] = {150,150,150}; // current positions for servos
 uint16_t currServo = 0;
-uint8_t modeLedPin[4] = {10,9,8};
-
 uint8_t rotationSpeed = 5;
+//storage for led states, 4 bytes
+byte ledData[] = {15, 15, 15, 15}; // These are the number of on pins in each row
 
 
 void setup() {
@@ -43,7 +47,11 @@ void setup() {
   pinMode(modeLedPin[0], OUTPUT);
   pinMode(modeLedPin[1], OUTPUT);
   pinMode(modeLedPin[2], OUTPUT);
-  digitalWrite(10, HIGH); // turn led on 
+  //set light pins as output
+  pinMode(lightLatchPin, OUTPUT);
+  pinMode(lightClockPin, OUTPUT);
+  pinMode(lightDataPin, OUTPUT);
+  digitalWrite(10, HIGH); // turn servo led on 
 }
 
 
@@ -56,13 +64,13 @@ void loop() {
       digitalWrite(modeLedPin[currServo], LOW); // turn curr led off
       currServo = 0;
       digitalWrite(modeLedPin[currServo], HIGH); // turn new led on
-      delay(1000); // time to remove finger
+      delay(300); // time to remove finger
       Serial.println("back to 0");
     }else{
       digitalWrite(modeLedPin[currServo], LOW); 
       currServo++;
       digitalWrite(modeLedPin[currServo], HIGH); 
-      delay(1000); // time to remove finger
+      delay(300); // time to remove finger
       Serial.println("next servo");
     }
   }
@@ -100,53 +108,103 @@ void loop() {
     moveServo(1,int(EEPROM.read(1))*4);
     moveServo(2,int(EEPROM.read(2))*4);
   }
+
+
+  // Needed to reset the light vals
+  ledData[0] = 15;
+  ledData[1] = 15;
+  ledData[2] = 15;
+  ledData[3] = 15;
   
-  delay(100);
+  // Check light mode btn
+  lightBtnState = digitalRead(lightBtnPin); // read button press
+  //delay(10); // apparently this helps reading
+  if(lightBtnState == HIGH){
+    if(lightOn == false){
+      lightOn = true;
+      Serial.println("first true");
+      Serial.println(ledData[0]);
+    }
+    delay(200);
+  }
+
+  while(lightOn){    
+    // Check light mode btn, can't do anything else while light is on 
+    
+    lightBtnState = digitalRead(lightBtnPin); // read button press
+    //delay(10); // apparently this helps reading
+    if(lightBtnState == HIGH){
+      if(lightOn){
+        lightOn = false;
+        //ledData = {0,0,0,0}; // So it doesn't leave the last sent row on the leds
+        ledData[0] = 0;
+        ledData[1] = 0;
+        ledData[2] = 0;
+        ledData[3] = 0;
+        Serial.println("false");
+      }
+      delay(200);
+    }
+    
+    for (byte i=0;i<4;i++){
+        // Light's on
+        //send data from ledData to each row, one at a time
+        byte dataToSend = (1 << (i+4)) | (15 & ~ledData[i]);
+          
+        // setlatch pin low so the LEDs don't change while sending in bits
+        digitalWrite(lightLatchPin, LOW);
+        // shift out the bits of dataToSend to the 74HC595
+        shiftOut(lightDataPin, lightClockPin, LSBFIRST, dataToSend);
+        //set latch pin high- this sends data to outputs so the LEDs will light up
+        digitalWrite(lightLatchPin, HIGH);
+    
+        //delay(10); // Use for strobing, normally off
+      } 
+  }
+  
+  //delay(100);
 
   // If pot is right then target +10, if left then target -10
   // deadzone is 60-120 degrees
   potVal = fromPot(analogRead(potPin)); // this should be pot degrees 0-180
   delay(10); 
-  Serial.println("degrees:");
-  Serial.println(potVal);
+  //Serial.println("degrees:");
+  //Serial.println(potVal);
   if (potVal <= 60){ 
     // go -10
     if ((currPulseLen[currServo] - rotationSpeed) <= SERVOMIN){
       moveServo(currServo, SERVOMIN); // set to lowest angle
       delay(10);
-      Serial.println("at lowest");
+      //Serial.println("at lowest");
     }else if((currPulseLen[currServo] - rotationSpeed) > SERVOMIN){
       // moves current servo to its previous position - 10
       moveServo(currServo, currPulseLen[currServo] - rotationSpeed); 
       delay(10);
-      Serial.println("-10");
+      //Serial.println("-10");
     }
+
+    delay(100);
     
   }else if (potVal >= 120){
     // go +10
     if ((currPulseLen[currServo] + rotationSpeed) >= SERVOMAX){
       moveServo(currServo, SERVOMAX); // set to highest angle
       delay(10);
-      Serial.println("at highest");
+      //Serial.println("at highest");
       
     }else if((currPulseLen[currServo] + rotationSpeed) < SERVOMAX){
       // moves current servo to its previous position + 10
       moveServo(currServo, currPulseLen[currServo] + rotationSpeed);
       delay(10);
-      Serial.println("+10");
+      //Serial.println("+10");
     }
+    
+    delay(100);
     
   }else{
     // deadzone so change nothing
-    Serial.println("deadzone");
+    //Serial.println("deadzone");
   }
-
-  // get & set light val
-//  lightPotVal = fromPot(analogRead(lightPotPin)); // this should be degrees 0-180
-//  delay(10); // apparently this helps reading
-//  Serial.println("light intensity degree: "); 
-//  Serial.println(lightPotVal);
-//  delay(100);
 
 }
 
@@ -167,6 +225,8 @@ uint16_t fromPot(uint16_t analogue){
 void moveServo(uint16_t servo, uint16_t targetPulseLength){
   Serial.println("pl target:");
   Serial.println(targetPulseLength);
+
+  // perhaps implement a while(pot = right) pulselen++ to prevent stutter?
   
   if (currPulseLen[servo] < targetPulseLength){
     //Serial.println("going up");

@@ -1,0 +1,11 @@
+# What’s This All About?	
+explain what the goal is here
+
+# Chapters
+
+this will be updated with links to the other sections, each chapter is a separate page
+
+<a href="http://www.google.com">hi</a>
+
+# Chapter 1 - Rough Plans
+fill me
